@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHA Integrity Analyzer - GMIU</title>
+
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Poppins', 'sans-serif'],
+                        poppins: ['Poppins', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass {
+                @apply bg-white/70 backdrop-blur-2xl border border-white/20 shadow-2xl;
+            }
+            .glass-card {
+                @apply bg-white/40 backdrop-blur-md border border-white/20 shadow-lg transition-all duration-300;
+            }
+            .input-box {
+                @apply w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-xs md:text-sm;
+            }
+            .btn-tab {
+                @apply px-4 py-1.5 rounded-lg font-bold text-xs uppercase tracking-widest transition-all duration-300;
+            }
+            .btn-tab-active {
+                @apply bg-indigo-600 text-white shadow-md shadow-indigo-200;
+            }
+            .btn-tab-inactive {
+                @apply bg-white/50 text-slate-400 hover:bg-white/80;
+            }
+            .hash-char {
+                @apply inline-block;
+            }
+            .diff {
+                @apply text-red-500 font-bold bg-red-50 rounded;
+            }
+            .btn-secondary {
+                @apply bg-white/80 border border-slate-200 text-slate-700 font-semibold py-1.5 px-4 rounded-lg hover:bg-slate-50 transition-all text-xs;
+            }
+        }
+
+        body {
+            @apply antialiased overflow-hidden md:h-screen flex items-center justify-center p-3 md:p-6;
+            background: linear-gradient(135deg, #10b981 0%, #0d9488 100%);
+        }
+
+        @media (max-width: 1024px) {
+            body { @apply overflow-y-auto h-auto scroll-smooth py-12; }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+
+<body class="poppins">
+
+    <!-- Notification system -->
+    <div id="toast" class="fixed top-6 right-6 z-50 transform translate-x-full transition-transform duration-300">
+        <div class="glass px-5 py-3 rounded-2xl flex items-center gap-3 shadow-xl border-l-4 border-indigo-600">
+            <div id="toast-icon" class="text-indigo-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <p id="toast-msg" class="text-slate-800 font-medium text-sm"></p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="glass w-full max-w-7xl rounded-[40px] p-5 lg:p-8 flex flex-col md:max-h-[94vh] overflow-hidden">
+
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
+            <div>
+                <nav class="flex items-center gap-3 mb-1">
+                    <a href="index.html"
+                        class="text-slate-500 hover:text-indigo-600 text-xs font-bold uppercase tracking-widest transition-colors">Dashboard</a>
+                    <span class="text-slate-300 text-xs">/</span>
+                    <a href="ala1.html"
+                        class="text-slate-500 hover:text-indigo-600 text-xs font-bold uppercase tracking-widest transition-colors">ALA-1</a>
+                    <span class="text-slate-300 text-xs">/</span>
+                    <span
+                        class="text-indigo-600 text-xs font-bold uppercase tracking-widest cursor-default">ALA-2</span>
+                </nav>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight">
+                    SHA <span
+                        class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Integrity
+                        Analyzer</span>
+                </h1>
+                <p class="text-slate-500 text-sm font-medium">Observe the Avalanche Effect in Real-Time</p>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="flex bg-white/40 p-1.5 rounded-xl border border-white/20">
+                    <button onclick="changeAlg('SHA-1')" id="tab-SHA-1" class="btn-tab btn-tab-inactive">SHA-1</button>
+                    <button onclick="changeAlg('SHA-256')" id="tab-SHA-256"
+                        class="btn-tab btn-tab-active">SHA-256</button>
+                    <button onclick="changeAlg('SHA-512')" id="tab-SHA-512"
+                        class="btn-tab btn-tab-inactive">SHA-512</button>
+                </div>
+                <button onclick="clearInputs()" class="btn-secondary flex items-center gap-2">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Clear
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 overflow-hidden">
+
+            <!-- Left Side: Inputs and Visualization -->
+            <div class="flex flex-col gap-5 overflow-hidden">
+
+                <!-- Inputs Section -->
+                <div class="glass-card rounded-3xl p-5 space-y-4">
+                    <div class="flex items-center gap-3 border-b border-indigo-50 pb-3">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </div>
+                        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-widest">Input Comparisons</h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Original
+                                Message</label>
+                            <textarea id="input-orig" oninput="processHashes()"
+                                class="input-box h-24 no-scrollbar resize-none"
+                                placeholder="Type something..."></textarea>
+                        </div>
+                        <div class="space-y-2">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Modified
+                                Message</label>
+                            <textarea id="input-mod" oninput="processHashes()"
+                                class="input-box h-24 no-scrollbar resize-none"
+                                placeholder="Change 1 character..."></textarea>
+                        </div>
+                    </div>
+                    <div class="bg-indigo-50/50 p-3 rounded-xl flex items-start gap-2 border border-indigo-100">
+                        <svg class="w-4 h-4 text-indigo-500 mt-0.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-[11px] text-slate-600 font-medium leading-relaxed">
+                            The <span class="font-bold text-indigo-600 underline">Avalanche Effect</span> ensures that a
+                            single changed character in the input produces a vastly different hash output, making data
+                            tampering easily detectable.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Avalanche Analysis -->
+                <div class="glass-card rounded-3xl p-5 flex-1 overflow-hidden flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-indigo-50 pb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-widest">Avalanche Analysis
+                            </h2>
+                        </div>
+                        <div id="diff-percentage" class="text-xl font-black text-slate-800">0.0%</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white/50 p-2.5 rounded-2xl border border-white/20">
+                            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Changed
+                                Hex Chars</div>
+                            <div id="chars-changed" class="text-base font-bold text-slate-700">0 / 0</div>
+                        </div>
+                        <div class="bg-white/50 p-2.5 rounded-2xl border border-white/20">
+                            <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Diffusion
+                                Quality</div>
+                            <div id="diff-score" class="text-base font-bold text-slate-700">None</div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex-1 bg-slate-900 rounded-2xl p-4 font-mono text-[10px] md:text-xs overflow-y-auto no-scrollbar relative">
+                        <div class="absolute top-3 right-4 flex items-center gap-4">
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-2 h-2 rounded-full bg-red-500"></div><span
+                                    class="text-slate-500 text-[9px] uppercase font-bold">Modified</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-2 h-2 rounded-full bg-slate-600"></div><span
+                                    class="text-slate-500 text-[9px] uppercase font-bold">Unchanged</span>
+                            </div>
+                        </div>
+                        <div id="hash-diff-map" class="text-slate-300 break-all leading-relaxed pt-6">---</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Hashes and Theory -->
+            <div class="flex flex-col gap-5 overflow-hidden">
+
+                <!-- Hash Values Display -->
+                <div class="glass-card rounded-3xl p-5 flex-1 flex flex-col gap-4 overflow-hidden">
+                    <div class="flex items-center gap-3 border-b border-indigo-50 pb-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                            </svg>
+                        </div>
+                        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-widest">Full Hash Values</h2>
+                    </div>
+
+                    <div class="space-y-4 overflow-y-auto no-scrollbar pr-1">
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center px-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Original
+                                    Digest</label>
+                                <button onclick="copyHash('hash-orig-val')"
+                                    class="text-indigo-600 hover:text-indigo-700 text-[9px] font-bold uppercase tracking-widest">Copy</button>
+                            </div>
+                            <div id="hash-orig-val"
+                                class="input-box bg-slate-50 min-h-[50px] p-3 break-all font-mono text-indigo-700 text-[11px]">
+                                ---</div>
+                        </div>
+                        <div class="space-y-2 text-right">
+                            <div class="flex justify-between items-center px-1">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Modified
+                                    Digest</label>
+                                <button onclick="copyHash('hash-mod-val')"
+                                    class="text-indigo-600 hover:text-indigo-700 text-[9px] font-bold uppercase tracking-widest">Copy</button>
+                            </div>
+                            <div id="hash-mod-val"
+                                class="input-box bg-slate-50 min-h-[50px] p-3 break-all font-mono text-purple-700 text-[11px] text-left">
+                                ---</div>
+                        </div>
+
+                        <!-- Theory Section -->
+                        <div class="pt-2 space-y-3">
+                            <div class="p-3 bg-white/50 rounded-2xl border border-white/20">
+                                <h3 class="text-[10px] font-extrabold text-indigo-600 uppercase mb-1">What is Hashing?
+                                </h3>
+                                <p class="text-[11px] text-slate-600 leading-normal">A hash function takes an input of
+                                    any length and returns a fixed-length string of characters. It is a "one-way"
+                                    mathematical function.</p>
+                            </div>
+                            <div class="p-3 bg-white/50 rounded-2xl border border-white/20">
+                                <h3 class="text-[10px] font-extrabold text-purple-600 uppercase mb-1">Integrity &
+                                    signatures</h3>
+                                <p class="text-[11px] text-slate-600 leading-normal">Hashing ensures data integrity. In
+                                    digital signatures, we hash the message first because encrypting large data is slow.
+                                    Changing the data changes the hash, breaking the signature.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Navigation -->
+                <div class="flex justify-between items-center bg-white/40 p-5 rounded-[32px] border border-white/20">
+                    <a href="ala1.html"
+                        class="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold text-xs transition-all uppercase tracking-widest">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        BACK ALA-1
+                    </a>
+                    <a href="ala3.html"
+                        class="btn-gradient px-8 py-2.5 flex items-center gap-2 text-xs uppercase tracking-widest">
+                        NEXT ALA-3
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <p class="mt-4 text-center text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] shrink-0">
+            ©CRYPTOGRAPHY AND NETWORK SECURITY
+        </p>
+    </div>
+
+    <!-- Hashing Script -->
+    <script>
+        let selectedAlg = "SHA-256";
+
+        async function computeHash(text, alg) {
+            if (!text) return "";
+            const msgBuffer = new TextEncoder().encode(text);
+            const hashBuffer = await window.crypto.subtle.digest(alg, msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function processHashes() {
+            const orig = document.getElementById('input-orig').value;
+            const mod = document.getElementById('input-mod').value;
+
+            const hOrig = await computeHash(orig, selectedAlg);
+            const hMod = await computeHash(mod, selectedAlg);
+
+            document.getElementById('hash-orig-val').innerText = hOrig || '---';
+            document.getElementById('hash-mod-val').innerText = hMod || '---';
+
+            updateAvalanche(hOrig, hMod);
+        }
+
+        function updateAvalanche(h1, h2) {
+            const mapEl = document.getElementById('hash-diff-map');
+            const percentEl = document.getElementById('diff-percentage');
+            const charsEl = document.getElementById('chars-changed');
+            const scoreEl = document.getElementById('diff-score');
+
+            if (!h1 || !h2) {
+                mapEl.innerText = "Compute hashes to see the map...";
+                percentEl.innerText = "0.0%";
+                charsEl.innerText = "0 / 0";
+                scoreEl.innerText = "None";
+                return;
+            }
+
+            let html = "";
+            let changes = 0;
+            const maxLen = Math.max(h1.length, h2.length);
+
+            for (let i = 0; i < maxLen; i++) {
+                const c1 = h1[i] || "";
+                const c2 = h2[i] || "";
+
+                if (c1 !== c2) {
+                    changes++;
+                    html += `<span class="text-red-500 font-bold bg-red-400/20">${c2 || '?'}</span>`;
+                } else {
+                    html += `<span class="text-slate-500">${c2}</span>`;
+                }
+            }
+
+            const p = ((changes / maxLen) * 100).toFixed(1);
+
+            mapEl.innerHTML = html;
+            percentEl.innerText = p + "%";
+            charsEl.innerText = `${changes} / ${maxLen}`;
+
+            if (p > 50) scoreEl.innerText = "Optimal Diffusion";
+            else if (p > 20) scoreEl.innerText = "Moderate";
+            else scoreEl.innerText = "Low Diffusion";
+
+            scoreEl.className = `text-base font-bold ${p > 40 ? 'text-emerald-500' : 'text-slate-700'}`;
+            percentEl.className = `text-xl font-black ${p > 40 ? 'text-indigo-600' : 'text-slate-400'}`;
+        }
+
+        function changeAlg(alg) {
+            selectedAlg = alg;
+            document.querySelectorAll('.btn-tab').forEach(b => {
+                b.classList.replace('btn-tab-active', 'btn-tab-inactive');
+            });
+            document.getElementById(`tab-${alg}`).classList.replace('btn-tab-inactive', 'btn-tab-active');
+            processHashes();
+            showToast(`ALGORITHM: ${alg}`);
+        }
+
+        function clearInputs() {
+            document.getElementById('input-orig').value = "";
+            document.getElementById('input-mod').value = "";
+            processHashes();
+            showToast("Inputs Cleared");
+        }
+
+        function copyHash(id) {
+            const t = document.getElementById(id).innerText;
+            if (t === '---') return;
+            navigator.clipboard.writeText(t);
+            showToast("Hash Copied!");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => toast.classList.add('translate-x-full'), 2500);
+        }
+
+        // Init
+        window.onload = () => {
+            document.getElementById('input-orig').value = "Cybersecurity Lab";
+            document.getElementById('input-mod').value = "cybersecurity lab";
+            processHashes();
+        };
+    </script>
+</body>
+
+</html>

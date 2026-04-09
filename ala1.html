@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Signature Verifier - GMIU</title>
+
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Poppins', 'sans-serif'],
+                        poppins: ['Poppins', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass {
+                @apply bg-white/70 backdrop-blur-2xl border border-white/20 shadow-2xl;
+            }
+            .glass-card {
+                @apply bg-white/40 backdrop-blur-md border border-white/20 shadow-lg transition-all duration-300;
+            }
+            .input-box {
+                @apply w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-mono text-xs md:text-sm;
+            }
+            .btn-gradient {
+                @apply bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2 px-6 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.01] active:scale-[0.99] transition-all;
+            }
+            .btn-secondary {
+                @apply bg-white/80 border border-slate-200 text-slate-700 font-semibold py-1.5 px-4 rounded-lg hover:bg-slate-50 transition-all text-xs;
+            }
+        }
+
+        body {
+            @apply antialiased overflow-hidden md:h-screen flex items-center justify-center p-3 md:p-6;
+            background: linear-gradient(135deg, #10b981 0%, #0d9488 100%);
+        }
+
+        @media (max-width: 1024px) {
+            body { @apply overflow-y-auto h-auto scroll-smooth py-12; }
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+
+<body class="poppins">
+
+    <!-- Notification system -->
+    <div id="toast" class="fixed top-6 right-6 z-50 transform translate-x-full transition-transform duration-300">
+        <div class="glass px-5 py-3 rounded-2xl flex items-center gap-3 shadow-xl border-l-4 border-indigo-600">
+            <div id="toast-icon" class="text-indigo-600"></div>
+            <p id="toast-msg" class="text-slate-800 font-medium text-sm"></p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="glass w-full max-w-7xl rounded-[40px] p-5 lg:p-8 flex flex-col md:max-h-[94vh] overflow-hidden">
+
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 shrink-0">
+            <div>
+                <a href="index.html"
+                    class="inline-flex items-center text-slate-600 hover:text-indigo-600 gap-2 mb-1 transition-colors text-xs font-semibold uppercase tracking-wider">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Dashboard
+                </a>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight">
+                    Digital Signature <span
+                        class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Verifier</span>
+                </h1>
+                <p class="text-slate-500 text-sm font-medium">RSA-PSS Cryptography Laboratory</p>
+            </div>
+
+            <button onclick="clearAll()" class="btn-secondary flex items-center gap-2 self-start md:self-auto">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Reset Workshop
+            </button>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 flex-1 overflow-hidden">
+
+            <!-- 1. Key Generation Section -->
+            <section class="glass-card rounded-3xl p-5 flex flex-col gap-4 overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-base font-bold text-slate-800 tracking-wide uppercase">1. Key Generation</h2>
+                </div>
+
+                <button id="gen-btn" onclick="generateKeys()"
+                    class="btn-gradient w-full flex items-center justify-center gap-2 text-sm">
+                    <span id="gen-text">Generate RSA Pair</span>
+                    <svg id="gen-loader" class="hidden w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                    </svg>
+                </button>
+
+                <div class="space-y-3 flex-1 overflow-y-auto no-scrollbar">
+                    <div>
+                        <div class="flex justify-between items-center mb-1 px-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Public Key
+                                (SPKI)</label>
+                            <button onclick="copy('public-key')"
+                                class="text-indigo-600 hover:text-indigo-700 text-[9px] font-bold uppercase tracking-widest">Copy</button>
+                        </div>
+                        <textarea id="public-key" readonly class="input-box h-24 no-scrollbar resize-none"
+                            placeholder="Public key..."></textarea>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1 px-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Private Key
+                                (PKCS8)</label>
+                            <button onclick="copy('private-key')"
+                                class="text-indigo-600 hover:text-indigo-700 text-[9px] font-bold uppercase tracking-widest">Copy</button>
+                        </div>
+                        <textarea id="private-key" readonly class="input-box h-24 no-scrollbar resize-none"
+                            placeholder="Private key..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Signing Section -->
+            <section class="glass-card rounded-3xl p-5 flex flex-col gap-4 overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-base font-bold text-slate-800 tracking-wide uppercase">2. Sign Message</h2>
+                </div>
+
+                <div class="space-y-3 flex-1 overflow-y-auto no-scrollbar">
+                    <div>
+                        <label
+                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 px-1">Message</label>
+                        <textarea id="sign-input" class="input-box h-24 resize-none"
+                            placeholder="Enter text to sign..."></textarea>
+                    </div>
+
+                    <button onclick="signMessage()"
+                        class="btn-gradient w-full from-purple-600 to-pink-600 shadow-purple-100 hover:shadow-purple-200 text-sm">
+                        Sign Message
+                    </button>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1 px-1">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Signature
+                                (Base64)</label>
+                            <button onclick="copy('signature-output')"
+                                class="text-indigo-600 hover:text-indigo-700 text-[9px] font-bold uppercase tracking-widest">Copy</button>
+                        </div>
+                        <textarea id="signature-output" readonly class="input-box h-24 no-scrollbar resize-none"
+                            placeholder="Output signature..."></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Verification Section -->
+            <section class="glass-card rounded-3xl p-5 flex flex-col gap-4 overflow-hidden">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04M12 21.75c-3.111-1.391-5.758-3.66-7.531-6.527m15.062 0c-1.773 2.867-4.42 5.136-7.531 6.527M12 21.75V10.5" />
+                        </svg>
+                    </div>
+                    <h2 class="text-base font-bold text-slate-800 tracking-wide uppercase">3. Verification</h2>
+                </div>
+
+                <div class="space-y-2 flex-1 overflow-y-auto no-scrollbar">
+                    <div>
+                        <label
+                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 px-1">Confirm
+                            Message</label>
+                        <input id="verify-msg" type="text" class="input-box" placeholder="Message to verify">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 px-1">Confirm
+                            Signature</label>
+                        <input id="verify-sig" type="text" class="input-box" placeholder="Base64 Signature">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 px-1">Public
+                            Key</label>
+                        <textarea id="verify-key" class="input-box h-20 no-scrollbar resize-none"
+                            placeholder="Paste SPKI public key"></textarea>
+                    </div>
+
+                    <button onclick="verifySignature()"
+                        class="btn-gradient w-full from-emerald-600 to-teal-600 shadow-emerald-100 hover:shadow-emerald-200 text-sm mt-3">
+                        Verify Signature
+                    </button>
+
+                    <div id="status-card"
+                        class="hidden rounded-2xl p-3 flex flex-col items-center justify-center text-center transition-all duration-500 mt-2">
+                        <div id="status-icon" class="mb-1 scale-75"></div>
+                        <p id="status-text" class="font-bold text-xs uppercase tracking-wide"></p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer
+            class="mt-6 pt-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-3 shrink-0">
+            <p class="text-slate-400 font-medium text-[10px] uppercase tracking-widest">
+                © CRYPTOGRAPHY AND NETWORK SECURITY
+            </p>
+            <div class="flex items-center gap-5">
+                <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Encrypted Session</span>
+                </div>
+                <a href="ala2.html"
+                    class="group flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-bold text-xs transition-all uppercase tracking-widest">
+                    ALA2
+                    <svg class="w-3 h-3 transform group-hover:translate-x-1 transition-transform" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Binary/Base64 Helper Scripts -->
+    <script>
+        /* 
+         * Crypto Logic Module
+         * Algorithm: RSA-PSS
+         * Keys: 2048-bit RSA
+         * Hash: SHA-256
+         */
+
+        let currentKeys = null;
+
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            let bytes = new Uint8Array(buffer);
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+            return window.btoa(binary);
+        }
+
+        function base64ToArrayBuffer(base64) {
+            let binary_string = window.atob(base64);
+            let bytes = new Uint8Array(binary_string.length);
+            for (let i = 0; i < binary_string.length; i++) bytes[i] = binary_string.charCodeAt(i);
+            return bytes.buffer;
+        }
+
+        async function generateKeys() {
+            const btn = document.getElementById('gen-btn');
+            const loader = document.getElementById('gen-loader');
+            const text = document.getElementById('gen-text');
+            try {
+                loader.classList.remove('hidden');
+                text.innerText = 'Generating...';
+                btn.disabled = true;
+
+                currentKeys = await window.crypto.subtle.generateKey(
+                    { name: "RSA-PSS", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+                    true, ["sign", "verify"]
+                );
+
+                const exportedPublic = await window.crypto.subtle.exportKey("spki", currentKeys.publicKey);
+                document.getElementById('public-key').value = arrayBufferToBase64(exportedPublic);
+
+                const exportedPrivate = await window.crypto.subtle.exportKey("pkcs8", currentKeys.privateKey);
+                document.getElementById('private-key').value = arrayBufferToBase64(exportedPrivate);
+
+                showToast("RSA Keys Generated!", "check");
+            } catch (err) {
+                console.error(err);
+                showToast("Generation failed", "!");
+            } finally {
+                loader.classList.add('hidden');
+                text.innerText = 'Generate RSA Pair';
+                btn.disabled = false;
+            }
+        }
+
+        async function signMessage() {
+            const message = document.getElementById('sign-input').value;
+            if (!message || !currentKeys) return showToast(message ? "Generate keys first" : "Message required", "!");
+
+            try {
+                const signature = await window.crypto.subtle.sign(
+                    { name: "RSA-PSS", saltLength: 32 },
+                    currentKeys.privateKey,
+                    new TextEncoder().encode(message)
+                );
+
+                const base64Sig = arrayBufferToBase64(signature);
+                document.getElementById('signature-output').value = base64Sig;
+                document.getElementById('verify-msg').value = message;
+                document.getElementById('verify-sig').value = base64Sig;
+                document.getElementById('verify-key').value = document.getElementById('public-key').value;
+
+                showToast("Signed successfully!", "check");
+            } catch (err) {
+                showToast("Signing error", "!");
+            }
+        }
+
+        async function verifySignature() {
+            const message = document.getElementById('verify-msg').value;
+            const sigBase64 = document.getElementById('verify-sig').value;
+            const keyBase64 = document.getElementById('verify-key').value;
+
+            if (!message || !sigBase64 || !keyBase64) return showToast("Fields incomplete", "!");
+
+            const statusCard = document.getElementById('status-card');
+            const statusText = document.getElementById('status-text');
+            const statusIcon = document.getElementById('status-icon');
+
+            try {
+                statusCard.classList.remove('hidden');
+                const publicKey = await window.crypto.subtle.importKey(
+                    "spki", base64ToArrayBuffer(keyBase64),
+                    { name: "RSA-PSS", hash: "SHA-256" }, true, ["verify"]
+                );
+
+                const isValid = await window.crypto.subtle.verify(
+                    { name: "RSA-PSS", saltLength: 32 },
+                    publicKey, base64ToArrayBuffer(sigBase64), new TextEncoder().encode(message)
+                );
+
+                if (isValid) {
+                    statusCard.className = "mt-4 rounded-2xl p-3 flex flex-col items-center justify-center bg-emerald-50 border border-emerald-100 text-emerald-600";
+                    statusIcon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                    statusText.innerText = "Signature Verified";
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                statusCard.className = "mt-4 rounded-2xl p-3 flex flex-col items-center justify-center bg-red-50 border border-red-100 text-red-600";
+                statusIcon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                statusText.innerText = "Verification Failed";
+            }
+        }
+
+        function clearAll() {
+            document.querySelectorAll('textarea, input').forEach(el => el.value = '');
+            document.getElementById('status-card').classList.add('hidden');
+            currentKeys = null;
+            showToast("Reset completed", "check");
+        }
+
+        function copy(id) {
+            const el = document.getElementById(id);
+            if (!el.value) return;
+            el.select();
+            document.execCommand('copy');
+            showToast("Copied to clipboard", "check");
+        }
+
+        function showToast(msg, iconType) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => toast.classList.add('translate-x-full'), 3000);
+        }
+    </script>
+</body>
+
+</html>
